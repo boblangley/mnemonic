@@ -1,9 +1,10 @@
-import type { CommitStats, GitOps, LastCommit } from "./git.js";
+import type { CommitStats, LastCommit } from "./git.js";
 import type { NoteLifecycle, NoteRole } from "./storage.js";
 import type { Confidence, Provenance } from "./structured-content.js";
 export type { InterpretedHistoryEntry } from "./temporal-interpretation.js";
 import { daysSince } from "./date-utils.js";
 import { metadataPrefixes } from "./git-constants.js";
+import type { VaultHistory } from "./vault-history.js";
 
 const RECENTLY_CHANGED_DAYS = 5;
 
@@ -133,14 +134,14 @@ export function buildTemporalHistoryEntry(
 }
 
 export async function getNoteProvenance(
-  git: GitOps,
-  filePath: string,
-  _now: Date = new Date(),
+  history: VaultHistory,
+  noteId: string,
+  now: Date = new Date()
 ): Promise<Provenance | undefined> {
-  const commit = await git.getLastCommit(filePath);
+  const commit = await history.getLastCommit(noteId);
   if (!commit) return undefined;
 
-  const daysSinceUpdate = Math.floor(daysSince(commit.timestamp));
+  const daysSinceUpdate = Math.floor(daysSince(commit.timestamp, now));
 
   return {
     lastUpdatedAt: commit.timestamp,

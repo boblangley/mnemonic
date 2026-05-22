@@ -1,12 +1,8 @@
-import { describe, expect, it } from "vitest";
-import {
-  buildTemporalHistoryEntry,
-  computeSignalStrength,
-  computeConfidence,
-  computeDecayInfo,
-} from "../src/provenance.js";
+import { describe, expect, it, vi } from "vitest";
+import { buildTemporalHistoryEntry, computeSignalStrength, computeConfidence, computeDecayInfo, getNoteProvenance } from "../src/provenance.js";
 import { enrichTemporalHistory } from "../src/temporal-interpretation.js";
 import type { CommitStats, LastCommit } from "../src/git.js";
+import type { VaultHistory } from "../src/vault-history.js";
 
 function makeCommit(overrides: Partial<LastCommit> = {}): LastCommit {
   return {
@@ -119,6 +115,43 @@ describe("buildTemporalHistoryEntry", () => {
     expect(result.historySummary).toBe(
       "This note was created and then expanded with additional detail.",
     );
+  });
+});
+
+describe("getNoteProvenance", () => {
+  it("reads last commit metadata through vault history by note id", async () => {
+    const history: VaultHistory = {
+      getLastCommit: vi.fn().mockResolvedValue(makeCommit({
+        timestamp: "2026-01-10T00:00:00.000Z",
+        message: "update: note",
+      })),
+      getFileHistory: vi.fn(),
+      getCommitStats: vi.fn(),
+    };
+
+    const provenance = await getNoteProvenance(
+      history,
+      "note-1",
+      new Date("2026-01-12T00:00:00.000Z"),
+    );
+
+    expect(history.getLastCommit).toHaveBeenCalledWith("note-1");
+    expect(provenance).toEqual({
+      lastUpdatedAt: "2026-01-10T00:00:00.000Z",
+      lastCommitHash: "abc1234",
+      lastCommitMessage: "update: note",
+      recentlyChanged: true,
+    });
+  });
+
+  it("returns undefined when history has no commit for the note", async () => {
+    const history: VaultHistory = {
+      getLastCommit: vi.fn().mockResolvedValue(null),
+      getFileHistory: vi.fn(),
+      getCommitStats: vi.fn(),
+    };
+
+    await expect(getNoteProvenance(history, "missing-note")).resolves.toBeUndefined();
   });
 });
 

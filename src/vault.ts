@@ -8,6 +8,7 @@ import { memoryId, type AttachmentSlug } from "./brands.js";
 import { GitOps } from "./git.js";
 import { AttachedStorage } from "./attached-storage.js";
 import { expandHomePath } from "./paths.js";
+import { WorktreeVaultHistory, type VaultHistory } from "./vault-history.js";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ export interface ProjectAttachmentConfig {
 export interface Vault {
   storage: NoteStorage;
   git: GitOps;
+  history: VaultHistory;
   /**
    * Notes directory path relative to the vault's git root.
    * "notes" for the main vault, ".mnemonic/notes" for project vaults.
@@ -455,9 +457,11 @@ function makeVault(
   storage?: NoteStorage,
   git?: GitOps,
 ): Vault {
+  const vaultGit = git ?? new GitOps(gitRoot, notesRelDir);
   return {
     storage: storage ?? new Storage(vaultPath, embeddingsDirOverride),
-    git: git ?? new GitOps(gitRoot, notesRelDir),
+    git: vaultGit,
+    history: new WorktreeVaultHistory(vaultGit, notesRelDir),
     notesRelDir,
     provenance,
     vaultFolderName,

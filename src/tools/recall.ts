@@ -479,8 +479,7 @@ export function registerRecallTool(server: McpServer, ctx: ServerContext): void 
         const note = await readCachedNote(vault, id);
         if (note) {
           const centrality = note.relatedTo?.length ?? 0;
-          const filePath = `${vault.notesRelDir}/${id}.md`;
-          const provenance = await getNoteProvenance(vault.git, filePath);
+          const provenance = await getNoteProvenance(vault.history, id);
           const signalStrengthResult = await attempt("recall:signal-strength", async () => {
             const ss = computeSignalStrength({
               lifecycle: note.lifecycle,
@@ -516,13 +515,10 @@ export function registerRecallTool(server: McpServer, ctx: ServerContext): void 
 
           if (mode === "temporal") {
             if (index < ctx.temporalHistoryNoteLimit) {
-              const commits = await vault.git.getFileHistory(
-                filePath,
-                ctx.temporalHistoryCommitLimit,
-              );
+              const commits = await vault.history.getFileHistory(id, ctx.temporalHistoryCommitLimit);
               const rawHistory = await Promise.all(
                 commits.map(async (commit) => {
-                  const stats = await vault.git.getCommitStats(filePath, commit.hash);
+                  const stats = await vault.history.getCommitStats(id, commit.hash);
                   return buildTemporalHistoryEntry(commit, stats, verbose);
                 }),
               );
