@@ -7,7 +7,7 @@ tags:
   - project-memory
 lifecycle: temporary
 createdAt: '2026-05-22T18:25:22.670Z'
-updatedAt: '2026-05-22T18:25:29.910Z'
+updatedAt: '2026-05-22T18:34:15.287Z'
 role: plan
 alwaysLoad: false
 project: github-com-boblangley-mnemonic
@@ -17,6 +17,8 @@ relatedTo:
     type: derives-from
   - id: research-feature-impact-of-optional-git-ref-memory-backend-e6aa4449
     type: derives-from
+  - id: apply-vault-history-abstraction-first-slice-9d51ab5a
+    type: follows
 memoryVersion: 1
 ---
 Plan: introduce a backend-neutral vault history abstraction as the first upstream-friendly slice toward optional custom Git ref memory storage.
