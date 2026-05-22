@@ -5,11 +5,14 @@ tags:
   - request
 lifecycle: temporary
 createdAt: '2026-05-22T17:45:39.150Z'
-updatedAt: '2026-05-22T17:45:39.150Z'
+updatedAt: '2026-05-22T17:48:38.954Z'
 role: context
 alwaysLoad: false
 project: github-com-danielmarbach-mnemonic
 projectName: mnemonic
+relatedTo:
+  - id: research-custom-git-refs-for-project-memory-storage-9d7d5aa5
+    type: derives-from
 memoryVersion: 1
 ---
 Research request: evaluate moving project-level mnemonic memories into a custom Git ref, whether memories can be pulled from other repositories via Git, and whether Git can submodule a ref.
