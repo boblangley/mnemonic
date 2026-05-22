@@ -467,8 +467,7 @@ export function registerProjectMemorySummaryTool(server: McpServer, ctx: ServerC
       const enrichOrientationNote = async (anchor: AnchorNote) => {
         const vault = noteVaultMap.get(anchor.id);
         if (!vault) return {};
-        const filePath = `${vault.notesRelDir}/${anchor.id}.md`;
-        const provenance = await getNoteProvenance(vault.git, filePath);
+        const provenance = await getNoteProvenance(vault.history, anchor.id);
         const confidence = computeConfidence("permanent", anchor.updatedAt, anchor.centrality);
         return { provenance, confidence };
       };
@@ -524,8 +523,7 @@ export function registerProjectMemorySummaryTool(server: McpServer, ctx: ServerC
         const fallbackNote = fallbackEntry.note;
         const vault = noteVaultMap.get(fallbackNote.id);
         if (vault) {
-          const filePath = `${vault.notesRelDir}/${fallbackNote.id}.md`;
-          const provenance = await getNoteProvenance(vault.git, filePath);
+          const provenance = await getNoteProvenance(vault.history, fallbackNote.id);
           const confidence = computeConfidence(fallbackNote.lifecycle, fallbackNote.updatedAt, 0);
           fallbackEnriched = { provenance, confidence };
         }

@@ -6,12 +6,14 @@ import { attempt, debugLog, getErrorMessage } from "./error-utils.js";
 import { Storage, type Note } from "./storage.js";
 import { memoryId } from "./brands.js";
 import { GitOps } from "./git.js";
+import { WorktreeVaultHistory, type VaultHistory } from "./vault-history.js";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
 export interface Vault {
   storage: Storage;
   git: GitOps;
+  history: VaultHistory;
   /**
    * Notes directory path relative to the vault's git root.
    * "notes" for the main vault, ".mnemonic/notes" for project vaults.
@@ -243,9 +245,11 @@ function makeVault(
   vaultFolderName: string,
   embeddingsDirOverride?: string,
 ): Vault {
+  const git = new GitOps(gitRoot, notesRelDir);
   return {
     storage: new Storage(vaultPath, embeddingsDirOverride),
-    git: new GitOps(gitRoot, notesRelDir),
+    git,
+    history: new WorktreeVaultHistory(git, notesRelDir),
     notesRelDir,
     isProject,
     vaultFolderName,
