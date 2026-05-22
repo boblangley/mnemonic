@@ -8,7 +8,7 @@ tags:
   - architecture
 lifecycle: temporary
 createdAt: '2026-05-22T17:58:38.575Z'
-updatedAt: '2026-05-22T17:58:46.206Z'
+updatedAt: '2026-05-22T17:58:51.400Z'
 role: research
 alwaysLoad: false
 project: github-com-danielmarbach-mnemonic
@@ -16,6 +16,8 @@ projectName: mnemonic
 relatedTo:
   - id: request-research-custom-git-ref-storage-for-project-memories-96d66dcc
     type: derives-from
+  - id: research-custom-git-refs-for-project-memory-storage-9d7d5aa5
+    type: follows
 memoryVersion: 1
 ---
 A custom Git ref backend should be modeled as an optional project-storage pathway, not a replacement for the existing `.mnemonic/` project vault. The existing filesystem project vault remains the compatibility baseline; the new pathway adds `refs/mnemonic/<project>` for writable project memories and read-only imported memory refs such as `refs/mnemonic/imports/<alias>/<name>`.
