@@ -7,7 +7,7 @@ tags:
   - project-memory
 lifecycle: temporary
 createdAt: '2026-05-22T18:34:09.127Z'
-updatedAt: '2026-05-22T18:34:15.287Z'
+updatedAt: '2026-05-22T18:35:17.059Z'
 role: context
 alwaysLoad: false
 project: github-com-boblangley-mnemonic
@@ -15,6 +15,8 @@ projectName: mnemonic
 relatedTo:
   - id: plan-backend-neutral-vault-history-abstraction-for-custom-re-99f14851
     type: follows
+  - id: review-vault-history-abstraction-first-slice-556dc585
+    type: derives-from
 memoryVersion: 1
 ---
 Implemented the first optional-custom-ref preparatory slice: a backend-neutral vault history abstraction with no custom-ref behavior yet.
