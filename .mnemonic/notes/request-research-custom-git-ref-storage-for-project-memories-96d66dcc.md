@@ -5,7 +5,7 @@ tags:
   - request
 lifecycle: temporary
 createdAt: '2026-05-22T17:45:39.150Z'
-updatedAt: '2026-05-22T17:58:46.206Z'
+updatedAt: '2026-05-22T18:25:26.217Z'
 role: context
 alwaysLoad: false
 project: github-com-danielmarbach-mnemonic
@@ -14,6 +14,8 @@ relatedTo:
   - id: research-custom-git-refs-for-project-memory-storage-9d7d5aa5
     type: derives-from
   - id: research-feature-impact-of-optional-git-ref-memory-backend-e6aa4449
+    type: derives-from
+  - id: plan-backend-neutral-vault-history-abstraction-for-custom-re-99f14851
     type: derives-from
 memoryVersion: 1
 ---
