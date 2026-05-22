@@ -7,7 +7,7 @@ tags:
   - project-memory
 lifecycle: temporary
 createdAt: '2026-05-22T18:25:22.670Z'
-updatedAt: '2026-05-22T18:34:15.287Z'
+updatedAt: '2026-05-22T18:34:24.968Z'
 role: plan
 alwaysLoad: false
 project: github-com-boblangley-mnemonic
@@ -29,12 +29,19 @@ This first PR should not add custom-ref storage behavior yet. It should preserve
 
 ## Steps
 
-- [ ] Add a small `VaultHistory` interface for note history operations by note id.
-- [ ] Implement the existing worktree/path-backed behavior through that interface.
-- [ ] Attach the history implementation to `Vault` construction without changing storage routing.
-- [ ] Update provenance and temporal recall call sites to ask `vault.history` instead of `vault.git` plus manually assembled file paths.
-- [ ] Add focused tests that prove the path-backed implementation preserves current behavior.
-- [ ] Run typecheck and focused tests; broaden to full test suite if the change touches shared behavior more than expected.
+- \[x] Add a small `VaultHistory` interface for note history operations by note id.
+- \[x] Implement the existing worktree/path-backed behavior through that interface.
+- \[x] Attach the history implementation to `Vault` construction without changing storage routing.
+- \[x] Update provenance and temporal recall call sites to ask `vault.history` instead of `vault.git` plus manually assembled file paths.
+- \[x] Add focused tests that prove the path-backed implementation preserves current behavior.
+- \[x] Run typecheck and focused tests; broaden to full test suite if the change touches shared behavior more than expected.
+
+- \[ ] Add a small `VaultHistory` interface for note history operations by note id.
+- \[ ] Implement the existing worktree/path-backed behavior through that interface.
+- \[ ] Attach the history implementation to `Vault` construction without changing storage routing.
+- \[ ] Update provenance and temporal recall call sites to ask `vault.history` instead of `vault.git` plus manually assembled file paths.
+- \[ ] Add focused tests that prove the path-backed implementation preserves current behavior.
+- \[ ] Run typecheck and focused tests; broaden to full test suite if the change touches shared behavior more than expected.
 
 ## Constraints
 
