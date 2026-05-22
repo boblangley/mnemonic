@@ -7,11 +7,14 @@ tags:
   - project-memory
 lifecycle: temporary
 createdAt: '2026-05-22T18:25:22.670Z'
-updatedAt: '2026-05-22T18:25:22.670Z'
+updatedAt: '2026-05-22T18:25:26.217Z'
 role: plan
 alwaysLoad: false
 project: github-com-boblangley-mnemonic
 projectName: mnemonic
+relatedTo:
+  - id: request-research-custom-git-ref-storage-for-project-memories-96d66dcc
+    type: derives-from
 memoryVersion: 1
 ---
 Plan: introduce a backend-neutral vault history abstraction as the first upstream-friendly slice toward optional custom Git ref memory storage.
