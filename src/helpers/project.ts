@@ -9,7 +9,11 @@ import {
 import type { ServerContext } from "../server-context.js";
 import type { ProjectRef } from "../structured-content.js";
 import type { Vault } from "../vault.js";
-import type { WriteScope } from "../project-memory-policy.js";
+import {
+  resolveProjectMemoryRef,
+  resolveProjectStorageBackend,
+  type WriteScope,
+} from "../project-memory-policy.js";
 import { invalidateActiveProjectCache } from "../cache.js";
 import { checkBranchChange } from "../branch-tracker.js";
 import { backfillEmbeddingsAfterSync, removeStaleEmbeddings } from "./embed.js";
@@ -69,9 +73,20 @@ export async function resolveWriteVault(
   scope: WriteScope,
 ): Promise<Vault> {
   if (scope === "project") {
-    return cwd
-      ? ((await ctx.vaultManager.getOrCreateProjectVault(cwd)) ?? ctx.vaultManager.main)
-      : ctx.vaultManager.main;
+    if (!cwd) {
+      return ctx.vaultManager.main;
+    }
+
+    const project = await resolveProject(ctx, cwd);
+    const policy = project ? await ctx.configStore.getProjectPolicy(project.id) : undefined;
+    if (resolveProjectStorageBackend(policy) === "git-ref") {
+      return (
+        (await ctx.vaultManager.getOrCreateProjectRefVault(cwd, resolveProjectMemoryRef(policy))) ??
+        ctx.vaultManager.main
+      );
+    }
+
+    return (await ctx.vaultManager.getOrCreateProjectVault(cwd)) ?? ctx.vaultManager.main;
   }
 
   return ctx.vaultManager.main;
