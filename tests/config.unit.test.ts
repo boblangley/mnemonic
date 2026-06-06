@@ -167,6 +167,8 @@ describe("MnemonicConfigStore", () => {
       consolidationMode: "supersedes",
       protectedBranchPatterns: undefined,
       protectedBranchBehavior: undefined,
+      projectStorageBackend: "git-ref",
+      projectMemoryRef: "refs/mnemonic/project",
       updatedAt: "2026-04-01T00:00:00.000Z",
     });
 
@@ -177,6 +179,8 @@ describe("MnemonicConfigStore", () => {
       consolidationMode: "supersedes",
       protectedBranchBehavior: undefined,
       protectedBranchPatterns: undefined,
+      projectStorageBackend: "git-ref",
+      projectMemoryRef: "refs/mnemonic/project",
       updatedAt: "2026-04-01T00:00:00.000Z",
     });
 
@@ -201,6 +205,8 @@ describe("MnemonicConfigStore", () => {
               consolidationMode: "supersedes",
               protectedBranchBehavior: "sometimes",
               protectedBranchPatterns: ["main", "", 42],
+              projectStorageBackend: "elsewhere",
+              projectMemoryRef: "refs/mnemonic/project",
               updatedAt: "2026-03-13T10:00:00.000Z",
             },
           },
@@ -219,6 +225,8 @@ describe("MnemonicConfigStore", () => {
       consolidationMode: "supersedes",
       protectedBranchBehavior: undefined,
       protectedBranchPatterns: ["main"],
+      projectStorageBackend: undefined,
+      projectMemoryRef: "refs/mnemonic/project",
       updatedAt: "2026-03-13T10:00:00.000Z",
     });
   });
