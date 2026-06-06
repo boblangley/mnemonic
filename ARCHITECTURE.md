@@ -153,6 +153,7 @@ flowchart TD
 | `src/embeddings.ts` | Ollama HTTP client and cosine similarity |
 | `src/git.ts` | Git initialization, commit, push, sync, and diff helpers |
 | `src/git-ref-note-store.ts` | Low-level custom-ref note tree reads and compare-and-swap writes |
+| `src/git-ref-storage.ts` | NoteStorage adapter that stages ref-backed note mutations before custom-ref commits |
 | `src/markdown.ts` | Markdown linting and normalization before persistence |
 | `src/migration.ts` | Schema migration registry and execution |
 | `src/consolidate.ts` | Consolidation helper logic for merge plans and relationship cleanup |
