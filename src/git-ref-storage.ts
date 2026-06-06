@@ -37,6 +37,10 @@ export class GitRefStorage implements NoteStorage {
     this.projectionsDir = localStorage.projectionsDir;
   }
 
+  get notesRelDir(): string {
+    return this.noteStore.notesRelDir;
+  }
+
   async init(): Promise<void> {
     await this.localStorage.init();
   }
@@ -124,6 +128,11 @@ export class GitRefStorage implements NoteStorage {
 
   hasPendingNoteChanges(): boolean {
     return this.stagedNotes.size > 0 || this.stagedDeletedNoteIds.size > 0;
+  }
+
+  pendingNotePaths(): string[] {
+    const ids = new Set<string>([...this.stagedNotes.keys(), ...this.stagedDeletedNoteIds]);
+    return [...ids].sort().map((id) => `${this.noteStore.notesRelDir}/${id}.md`);
   }
 
   async flushPendingNotes(message: string, body?: string): Promise<GitRefWriteResult> {
