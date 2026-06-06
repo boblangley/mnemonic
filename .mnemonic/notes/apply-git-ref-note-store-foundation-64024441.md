@@ -8,7 +8,7 @@ tags:
   - vault
 lifecycle: temporary
 createdAt: '2026-06-06T04:19:05.958Z'
-updatedAt: '2026-06-06T04:19:10.569Z'
+updatedAt: '2026-06-06T05:09:40.149Z'
 role: context
 alwaysLoad: false
 project: github-com-boblangley-mnemonic
@@ -40,3 +40,24 @@ Implemented the first Git ref-backed storage foundation: `GitRefNoteStore` can r
 ## Next Step
 
 Wire this lower-level store into a backend-shaped vault implementation and decide the public project policy/config shape for selecting filesystem vs custom-ref project storage.
+
+## 2026-06-06 Continuation
+
+Extended the Git ref-backed storage implementation beyond the low-level note store.
+
+Additional committed slices:
+
+- `feat: add custom-ref storage adapter` added `GitRefStorage`, a `NoteStorage` adapter that stages ref-backed note writes/deletes, overlays pending changes during reads/lists, flushes through `GitRefNoteStore`, and delegates embeddings/projections to local derived storage.
+- `feat: add custom-ref git commit bridge` added `GitRefGitOps`, a `GitOps`-compatible bridge that maps `commitWithStatus` to staged ref flushes, reports pending note paths through `status`, and pushes custom refs with explicit refspecs.
+- `feat: add project storage backend policy` added policy/config fields `projectStorageBackend` and `projectMemoryRef`, exposed them through set/get project policy schemas, validated custom refs, and updated the MCP schema snapshot.
+- `feat: create ref-backed project vaults` added `VaultManager.getOrCreateProjectRefVault`, composing `GitRefStorage` and `GitRefGitOps` while keeping derived local artifacts under Git's private directory.
+- `feat: route project writes to ref backend policy` made `resolveWriteVault` honor `projectStorageBackend: "git-ref"`.
+- `feat: load ref-backed project vaults for reads` loads policy-selected ref-backed vaults before common visible-note collection and before `get` lookup.
+
+Verification after these slices:
+
+- Focused bundle: `npm test -- tests/git-ref-note-store.unit.test.ts tests/git-ref-storage.unit.test.ts tests/git-ref-git.unit.test.ts tests/vault.unit.test.ts tests/project-helper.unit.test.ts tests/project-memory-policy.unit.test.ts tests/config.unit.test.ts tests/mcp-schema-contract.integration.test.ts` passed: 8 files, 96 tests.
+- `npm run build` passed.
+- Local MCP smoke via `npm run mcp:local` initialized and `detect_project` returned the mnemonic project identity.
+
+Known remaining gaps: ref-backed sync currently returns an empty sync result; temporal provenance for ref-backed notes still uses the worktree history abstraction and needs a ref-aware history implementation before temporal recall is accurate for custom-ref notes.
