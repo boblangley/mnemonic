@@ -139,6 +139,51 @@ describe("VaultManager", () => {
       expect(vault1).toBe(vault2); // Same instance
     });
 
+    it("should create a ref-backed project vault without worktree note files", async () => {
+      delete process.env.DISABLE_GIT;
+      const projectDir = path.join(tempDir, "project-ref-vault");
+      await fs.mkdir(projectDir, { recursive: true });
+      await initGitRepo(projectDir, "# Project Ref Vault");
+
+      const vault = await vaultManager.getOrCreateProjectRefVault(
+        projectDir,
+        "refs/mnemonic/project",
+      );
+      expect(vault).toBeTruthy();
+      expect(vault!.provenance).toBe("project-local");
+      expect(vault!.vaultFolderName).toBe(".mnemonic-ref");
+      expect(vault!.notesRelDir).toBe("notes");
+      expect(vault!.storage.vaultPath).toContain(path.join(".git", "mnemonic-ref"));
+
+      const note: Note = {
+        id: "ref-backed-note",
+        title: "Ref Backed Note",
+        content: "Note in custom ref",
+        tags: [],
+        lifecycle: "permanent",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      await vault!.storage.writeNote(note);
+      await vault!.git.commit("remember: ref backed note", ["notes/ref-backed-note.md"]);
+
+      await expect(fs.stat(path.join(projectDir, "notes"))).rejects.toThrow();
+      const refTip = await execFileAsync("git", [
+        "-C",
+        projectDir,
+        "rev-parse",
+        "--verify",
+        "refs/mnemonic/project",
+      ]);
+      expect(refTip.stdout.trim()).toHaveLength(40);
+
+      const sameVault = await vaultManager.getOrCreateProjectRefVault(
+        projectDir,
+        "refs/mnemonic/project",
+      );
+      expect(sameVault).toBe(vault);
+    });
+
     it("should not create or commit gitignore when loading existing project vault (getProjectVaultIfExists)", async () => {
       const projectDir = path.join(tempDir, "project-gitignore-bug");
       await fs.mkdir(projectDir, { recursive: true });
