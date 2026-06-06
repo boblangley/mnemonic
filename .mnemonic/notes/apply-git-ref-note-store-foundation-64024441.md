@@ -8,11 +8,14 @@ tags:
   - vault
 lifecycle: temporary
 createdAt: '2026-06-06T04:19:05.958Z'
-updatedAt: '2026-06-06T04:19:05.958Z'
+updatedAt: '2026-06-06T04:19:10.569Z'
 role: context
 alwaysLoad: false
 project: github-com-boblangley-mnemonic
 projectName: mnemonic
+relatedTo:
+  - id: optional-git-ref-project-memory-backend-architecture-9dfce64a
+    type: derives-from
 memoryVersion: 1
 ---
 Implemented the first Git ref-backed storage foundation: `GitRefNoteStore` can read and write note trees under custom refs such as `refs/mnemonic/project` without creating normal worktree note files.

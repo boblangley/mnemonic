@@ -8,11 +8,13 @@ tags:
   - decision
 lifecycle: permanent
 createdAt: '2026-06-06T04:13:08.128Z'
-updatedAt: '2026-06-06T04:13:08.128Z'
+updatedAt: '2026-06-06T04:19:10.569Z'
 project: github-com-boblangley-mnemonic
 projectName: mnemonic
 relatedTo:
   - id: request-research-custom-git-ref-storage-for-project-memories-96d66dcc
+    type: derives-from
+  - id: apply-git-ref-note-store-foundation-64024441
     type: derives-from
 memoryVersion: 1
 ---
