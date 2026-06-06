@@ -10,7 +10,7 @@ vi.mock("../src/project.js", () => ({
   detectProject: detectProjectMock,
 }));
 
-import { resolveWriteVault } from "../src/helpers/project.js";
+import { ensurePolicyProjectVaultLoaded, resolveWriteVault } from "../src/helpers/project.js";
 
 function makeVault(folderName: string): Vault {
   return {
@@ -66,6 +66,24 @@ describe("resolveWriteVault", () => {
     const vault = await resolveWriteVault(ctx, "/repo", "project");
 
     expect(vault.vaultFolderName).toBe(".mnemonic-ref");
+    expect(ctx.vaultManager.getOrCreateProjectRefVault).toHaveBeenCalledWith(
+      "/repo",
+      "refs/mnemonic/custom",
+    );
+    expect(ctx.vaultManager.getOrCreateProjectVault).not.toHaveBeenCalled();
+  });
+
+  it("loads policy-selected ref-backed project vaults for read paths", async () => {
+    const ctx = fakeCtx({
+      projectId: "project-1",
+      defaultScope: "project",
+      projectStorageBackend: "git-ref",
+      projectMemoryRef: "refs/mnemonic/custom",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    await ensurePolicyProjectVaultLoaded(ctx, "/repo");
+
     expect(ctx.vaultManager.getOrCreateProjectRefVault).toHaveBeenCalledWith(
       "/repo",
       "refs/mnemonic/custom",

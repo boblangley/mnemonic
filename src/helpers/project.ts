@@ -92,6 +92,21 @@ export async function resolveWriteVault(
   return ctx.vaultManager.main;
 }
 
+export async function ensurePolicyProjectVaultLoaded(
+  ctx: ServerContext,
+  cwd?: string,
+): Promise<void> {
+  if (!cwd) return;
+
+  const project = await resolveProject(ctx, cwd);
+  const policy = project ? await ctx.configStore.getProjectPolicy(project.id) : undefined;
+  if (resolveProjectStorageBackend(policy) !== "git-ref") {
+    return;
+  }
+
+  await ctx.vaultManager.getOrCreateProjectRefVault(cwd, resolveProjectMemoryRef(policy));
+}
+
 export function describeProject(project: Awaited<ReturnType<typeof resolveProject>>): string {
   return project ? `project '${project.name}' (${project.id})` : "global";
 }
