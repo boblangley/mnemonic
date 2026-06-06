@@ -147,6 +147,7 @@ flowchart TD
 | `src/index.ts` | MCP server entry point, tool registration, orchestration, CLI migration command |
 | `src/storage.ts` | Markdown note persistence, embedding JSON persistence, core types |
 | `src/vault.ts` | Main/project vault lifecycle, search order, vault routing |
+| `src/vault-history.ts` | Backend-neutral note history interface and current worktree-backed implementation |
 | `src/project.ts` | Stable project detection from git metadata |
 | `src/project-memory-policy.ts` | Write-scope and consolidation policy rules |
 | `src/embeddings.ts` | Ollama HTTP client and cosine similarity |
