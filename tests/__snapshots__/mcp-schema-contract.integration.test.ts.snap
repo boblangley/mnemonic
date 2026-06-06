@@ -2810,6 +2810,12 @@ Typical next step:
           ],
           "type": "object",
         },
+        "projectMemoryRef": {
+          "type": "string",
+        },
+        "projectStorageBackend": {
+          "type": "string",
+        },
         "protectedBranchBehavior": {
           "type": "string",
         },
@@ -6980,6 +6986,18 @@ Typical next step:
           "minimum": 1,
           "type": "integer",
         },
+        "projectMemoryRef": {
+          "description": "Custom Git ref used when projectStorageBackend is 'git-ref'. Defaults to refs/mnemonic/project.",
+          "type": "string",
+        },
+        "projectStorageBackend": {
+          "description": "Project memory storage backend: 'filesystem' uses \`.mnemonic/\`; 'git-ref' stores notes under a custom Git ref.",
+          "enum": [
+            "filesystem",
+            "git-ref",
+          ],
+          "type": "string",
+        },
         "protectedBranchBehavior": {
           "description": "Behavior for protected-branch matches during project-vault commits by mutating tools: 'ask', 'block', or 'allow'",
           "enum": [
@@ -7038,6 +7056,12 @@ Typical next step:
             "name",
           ],
           "type": "object",
+        },
+        "projectMemoryRef": {
+          "type": "string",
+        },
+        "projectStorageBackend": {
+          "type": "string",
         },
         "protectedBranchBehavior": {
           "type": "string",

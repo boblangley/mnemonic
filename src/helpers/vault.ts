@@ -3,7 +3,7 @@ import type { ServerContext } from "../server-context.js";
 import type { Vault } from "../vault.js";
 import type { PersistenceStatus } from "../structured-content.js";
 import { getOrBuildVaultNoteList } from "../cache.js";
-import { resolveProject } from "./project.js";
+import { ensurePolicyProjectVaultLoaded, resolveProject } from "./project.js";
 import {
   formatCommitBody,
   commitVaultWithProtection,
@@ -61,6 +61,7 @@ export async function collectVisibleNotes(
   storedIn: StorageScope = "any",
   sessionProjectId?: string,
 ): Promise<{ project: Awaited<ReturnType<typeof resolveProject>>; entries: NoteEntry[] }> {
+  await ensurePolicyProjectVaultLoaded(ctx, cwd);
   const project = await resolveProject(ctx, cwd);
   const projectId = project?.id;
   const vaults = await ctx.vaultManager.searchOrder(cwd, projectId);

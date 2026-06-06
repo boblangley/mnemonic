@@ -21,6 +21,13 @@ export const PROTECTED_BRANCH_BEHAVIORS = [
 ] as const satisfies readonly ProtectedBranchBehavior[];
 export const DEFAULT_PROTECTED_BRANCH_PATTERNS = ["main", "master", "release*"] as const;
 
+export type ProjectStorageBackend = "filesystem" | "git-ref";
+export const PROJECT_STORAGE_BACKENDS = [
+  "filesystem",
+  "git-ref",
+] as const satisfies readonly ProjectStorageBackend[];
+export const DEFAULT_PROJECT_MEMORY_REF = "refs/mnemonic/project";
+
 export interface ProjectMemoryPolicy {
   projectId: string;
   projectName?: string;
@@ -31,7 +38,21 @@ export interface ProjectMemoryPolicy {
   protectedBranchPatterns?: string[];
   /** Behavior when current branch matches a protected branch pattern. */
   protectedBranchBehavior?: ProtectedBranchBehavior;
+  /** Active project memory storage backend. Defaults to the filesystem `.mnemonic/` vault. */
+  projectStorageBackend?: ProjectStorageBackend;
+  /** Custom ref used when projectStorageBackend is "git-ref". */
+  projectMemoryRef?: string;
   updatedAt: string;
+}
+
+export function resolveProjectStorageBackend(
+  policy: ProjectMemoryPolicy | undefined,
+): ProjectStorageBackend {
+  return policy?.projectStorageBackend ?? "filesystem";
+}
+
+export function resolveProjectMemoryRef(policy: ProjectMemoryPolicy | undefined): string {
+  return policy?.projectMemoryRef ?? DEFAULT_PROJECT_MEMORY_REF;
 }
 
 export function resolveConsolidationMode(

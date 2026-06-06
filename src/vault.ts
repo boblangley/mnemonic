@@ -9,6 +9,9 @@ import { GitOps } from "./git.js";
 import { AttachedStorage } from "./attached-storage.js";
 import { expandHomePath } from "./paths.js";
 import { WorktreeVaultHistory, type VaultHistory } from "./vault-history.js";
+import { GitRefNoteStore } from "./git-ref-note-store.js";
+import { GitRefStorage } from "./git-ref-storage.js";
+import { GitRefGitOps } from "./git-ref-git.js";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -70,6 +73,8 @@ export class VaultManager {
    * Used for backwards-compatible single-vault access.
    */
   private readonly primaryProjectVaults = new Map<string, Vault>();
+  /** Ref-backed project vaults keyed by resolved git root plus memory ref. */
+  private readonly projectRefVaults = new Map<string, Vault>();
   /**
    * All project vaults per git root (primary + submodule vaults), keyed by resolved git root.
    * The first entry in the array is always the primary `.mnemonic` vault.
@@ -116,6 +121,36 @@ export class VaultManager {
     const gitRoot = await findGitRoot(cwd);
     if (!gitRoot || this.isMainRepo(gitRoot)) return null;
     return this.loadAllVaultsForRoot(gitRoot, false);
+  }
+
+  async getOrCreateProjectRefVault(cwd: string, ref: string): Promise<Vault | null> {
+    const gitRoot = await findGitRoot(cwd);
+    if (!gitRoot || this.isMainRepo(gitRoot)) return null;
+    const resolved = path.resolve(gitRoot);
+    const key = `${resolved}:${ref}`;
+    const cached = this.projectRefVaults.get(key);
+    if (cached) return cached;
+
+    const gitDir = await findGitDir(gitRoot);
+    const cachePath = path.join(gitDir, "mnemonic-ref", safeRefCacheName(ref));
+    const noteStore = new GitRefNoteStore({ gitRoot: resolved, ref });
+    const storage = new GitRefStorage(new Storage(cachePath), noteStore);
+    const git = new GitRefGitOps(resolved, ref, storage);
+    const vault = makeVault(
+      cachePath,
+      resolved,
+      storage.notesRelDir,
+      "project-local",
+      ".mnemonic-ref",
+      undefined,
+      undefined,
+      storage,
+      git,
+    );
+    await vault.storage.init();
+    await vault.git.init();
+    this.projectRefVaults.set(key, vault);
+    return vault;
   }
 
   /**
@@ -523,6 +558,21 @@ export async function findGitRoot(
   }
 
   return trimmedRoot;
+}
+
+export async function findGitDir(cwd: string): Promise<string> {
+  const git = simpleGit(cwd);
+  const gitDirResult = await attempt("vault:find-git-dir", () => git.revparse(["--git-dir"]));
+  if (!gitDirResult.ok || !gitDirResult.value.trim()) {
+    return path.join((await findGitRoot(cwd)) ?? path.resolve(cwd), ".git");
+  }
+
+  const gitDir = gitDirResult.value.trim();
+  return path.isAbsolute(gitDir) ? gitDir : path.resolve(cwd, gitDir);
+}
+
+function safeRefCacheName(ref: string): string {
+  return ref.replace(/[^a-zA-Z0-9._-]/g, "__");
 }
 
 export async function ensureGitignore(ignorePath: string): Promise<void> {

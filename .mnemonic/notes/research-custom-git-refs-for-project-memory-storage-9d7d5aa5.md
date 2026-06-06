@@ -7,7 +7,7 @@ tags:
   - project-memory
 lifecycle: temporary
 createdAt: '2026-05-22T17:48:35.371Z'
-updatedAt: '2026-05-22T17:58:51.400Z'
+updatedAt: '2026-06-06T04:13:08.128Z'
 role: research
 alwaysLoad: false
 project: github-com-danielmarbach-mnemonic
@@ -17,6 +17,8 @@ relatedTo:
     type: derives-from
   - id: research-feature-impact-of-optional-git-ref-memory-backend-e6aa4449
     type: follows
+  - id: optional-git-ref-project-memory-backend-architecture-9dfce64a
+    type: supersedes
 memoryVersion: 1
 ---
 Custom Git refs are feasible for project-level mnemonic memories, but they are a storage-model change rather than a small relocation of `.mnemonic/`.

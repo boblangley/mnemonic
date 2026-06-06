@@ -152,6 +152,9 @@ flowchart TD
 | `src/project-memory-policy.ts` | Write-scope and consolidation policy rules |
 | `src/embeddings.ts` | Ollama HTTP client and cosine similarity |
 | `src/git.ts` | Git initialization, commit, push, sync, and diff helpers |
+| `src/git-ref-git.ts` | GitOps-compatible bridge that commits staged ref-backed notes and pushes custom refs |
+| `src/git-ref-note-store.ts` | Low-level custom-ref note tree reads and compare-and-swap writes |
+| `src/git-ref-storage.ts` | NoteStorage adapter that stages ref-backed note mutations before custom-ref commits |
 | `src/markdown.ts` | Markdown linting and normalization before persistence |
 | `src/migration.ts` | Schema migration registry and execution |
 | `src/consolidate.ts` | Consolidation helper logic for merge plans and relationship cleanup |

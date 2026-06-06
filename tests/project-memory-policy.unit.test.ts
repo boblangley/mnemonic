@@ -9,6 +9,8 @@ import {
   isProtectedBranch,
   resolveProtectedBranchBehavior,
   resolveProtectedBranchPatterns,
+  resolveProjectMemoryRef,
+  resolveProjectStorageBackend,
   resolveWriteScope,
 } from "../src/project-memory-policy.js";
 
@@ -62,6 +64,8 @@ describe("project memory policies in config", () => {
       projectId: "project-1",
       projectName: "Project One",
       defaultScope: "ask",
+      projectStorageBackend: "git-ref",
+      projectMemoryRef: "refs/mnemonic/project",
       updatedAt: "2026-03-07T00:00:00.000Z",
     });
 
@@ -70,8 +74,38 @@ describe("project memory policies in config", () => {
       projectId: "project-1",
       projectName: "Project One",
       defaultScope: "ask",
+      projectStorageBackend: "git-ref",
+      projectMemoryRef: "refs/mnemonic/project",
       updatedAt: "2026-03-07T00:00:00.000Z",
     });
+  });
+});
+
+describe("project storage backend helpers", () => {
+  it("defaults to filesystem project storage", () => {
+    expect(resolveProjectStorageBackend(undefined)).toBe("filesystem");
+    expect(resolveProjectMemoryRef(undefined)).toBe("refs/mnemonic/project");
+  });
+
+  it("uses explicit git-ref project storage policy values", () => {
+    expect(
+      resolveProjectStorageBackend({
+        projectId: "p1",
+        defaultScope: "project",
+        projectStorageBackend: "git-ref",
+        projectMemoryRef: "refs/mnemonic/custom",
+        updatedAt: "2026-03-13T10:00:00.000Z",
+      }),
+    ).toBe("git-ref");
+    expect(
+      resolveProjectMemoryRef({
+        projectId: "p1",
+        defaultScope: "project",
+        projectStorageBackend: "git-ref",
+        projectMemoryRef: "refs/mnemonic/custom",
+        updatedAt: "2026-03-13T10:00:00.000Z",
+      }),
+    ).toBe("refs/mnemonic/custom");
   });
 });
 

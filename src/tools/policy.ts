@@ -5,10 +5,12 @@ import { resolveProject as resolveProjectFromModule } from "../helpers/project.j
 import { projectNotFoundResponse } from "../helpers/vault.js";
 import {
   CONSOLIDATION_MODES,
+  PROJECT_STORAGE_BACKENDS,
   PROTECTED_BRANCH_BEHAVIORS,
   PROJECT_POLICY_SCOPES,
   type ProjectMemoryPolicy,
 } from "../project-memory-policy.js";
+import { InvalidMemoryRefError, validateMemoryRef } from "../git-ref-note-store.js";
 import { formatCommitBody } from "../helpers/git-commit.js";
 import {
   pushAfterMutation as pushAfterMutationFromModule,
@@ -16,6 +18,7 @@ import {
   formatRetrySummary,
 } from "../helpers/persistence.js";
 import { PolicyResultSchema, type PolicyResult } from "../structured-content.js";
+import { attemptSync } from "../error-utils.js";
 
 export function registerSetProjectMemoryPolicyTool(server: McpServer, ctx: ServerContext): void {
   server.registerTool(
@@ -68,6 +71,18 @@ export function registerSetProjectMemoryPolicyTool(server: McpServer, ctx: Serve
           .describe(
             'Protected branch glob patterns. Defaults to ["main", "master", "release*"] when not set',
           ),
+        projectStorageBackend: z
+          .enum(PROJECT_STORAGE_BACKENDS)
+          .optional()
+          .describe(
+            "Project memory storage backend: 'filesystem' uses `.mnemonic/`; 'git-ref' stores notes under a custom Git ref.",
+          ),
+        projectMemoryRef: z
+          .string()
+          .optional()
+          .describe(
+            "Custom Git ref used when projectStorageBackend is 'git-ref'. Defaults to refs/mnemonic/project.",
+          ),
         maxAttachmentsPerProject: z
           .number()
           .int()
@@ -86,6 +101,8 @@ export function registerSetProjectMemoryPolicyTool(server: McpServer, ctx: Serve
       consolidationMode,
       protectedBranchBehavior,
       protectedBranchPatterns,
+      projectStorageBackend,
+      projectMemoryRef,
       maxAttachmentsPerProject,
     }) => {
       const project = await resolveProjectFromModule(ctx, cwd);
@@ -100,13 +117,15 @@ export function registerSetProjectMemoryPolicyTool(server: McpServer, ctx: Serve
         consolidationMode === undefined &&
         protectedBranchBehavior === undefined &&
         protectedBranchPatterns === undefined &&
+        projectStorageBackend === undefined &&
+        projectMemoryRef === undefined &&
         !maxAttachmentsChanged
       ) {
         return {
           content: [
             {
               type: "text",
-              text: "No policy fields provided. Set at least one of: defaultScope, consolidationMode, protectedBranchBehavior, protectedBranchPatterns, maxAttachmentsPerProject.",
+              text: "No policy fields provided. Set at least one of: defaultScope, consolidationMode, protectedBranchBehavior, protectedBranchPatterns, projectStorageBackend, projectMemoryRef, maxAttachmentsPerProject.",
             },
           ],
           isError: true,
@@ -123,6 +142,23 @@ export function registerSetProjectMemoryPolicyTool(server: McpServer, ctx: Serve
             .map((pattern) => pattern.trim())
             .filter((pattern) => pattern.length > 0)
         : existing?.protectedBranchPatterns;
+      const effectiveProjectStorageBackend =
+        projectStorageBackend ?? existing?.projectStorageBackend;
+      const effectiveProjectMemoryRef = projectMemoryRef?.trim() || existing?.projectMemoryRef;
+      if (effectiveProjectMemoryRef) {
+        const validation = attemptSync("policy:validate-memory-ref", () =>
+          validateMemoryRef(effectiveProjectMemoryRef),
+        );
+        if (!validation.ok && validation.error instanceof InvalidMemoryRefError) {
+          return {
+            content: [{ type: "text", text: validation.error.message }],
+            isError: true,
+          };
+        }
+        if (!validation.ok) {
+          throw validation.error;
+        }
+      }
 
       const now = new Date().toISOString();
       const policy: ProjectMemoryPolicy = {
@@ -132,6 +168,8 @@ export function registerSetProjectMemoryPolicyTool(server: McpServer, ctx: Serve
         consolidationMode: effectiveConsolidationMode,
         protectedBranchBehavior: effectiveProtectedBranchBehavior,
         protectedBranchPatterns: effectiveProtectedBranchPatterns,
+        projectStorageBackend: effectiveProjectStorageBackend,
+        projectMemoryRef: effectiveProjectMemoryRef,
         updatedAt: now,
       };
       await ctx.configStore.setProjectPolicy(policy);
@@ -153,6 +191,12 @@ export function registerSetProjectMemoryPolicyTool(server: McpServer, ctx: Serve
       const maxAttachmentsStr = maxAttachmentsChanged
         ? `, maxAttachmentsPerProject=${maxAttachmentsPerProject}`
         : "";
+      const backendStr = effectiveProjectStorageBackend
+        ? `, projectStorageBackend=${effectiveProjectStorageBackend}`
+        : "";
+      const memoryRefStr = effectiveProjectMemoryRef
+        ? `, projectMemoryRef=${effectiveProjectMemoryRef}`
+        : "";
       const commitBody = formatCommitBody({
         projectName: project.name,
         description:
@@ -163,7 +207,13 @@ export function registerSetProjectMemoryPolicyTool(server: McpServer, ctx: Serve
             effectiveProtectedBranchPatterns && effectiveProtectedBranchPatterns.length > 0
               ? `\nProtected branch patterns: ${effectiveProtectedBranchPatterns.join(", ")}`
               : ""
-          }`,
+          }` +
+          `${
+            effectiveProjectStorageBackend
+              ? `\nProject storage backend: ${effectiveProjectStorageBackend}`
+              : ""
+          }` +
+          `${effectiveProjectMemoryRef ? `\nProject memory ref: ${effectiveProjectMemoryRef}` : ""}`,
       });
       const commitMessage = `policy: ${project.name} default scope ${effectiveDefaultScope}`;
       const commitFiles = ["config.json"];
@@ -193,6 +243,8 @@ export function registerSetProjectMemoryPolicyTool(server: McpServer, ctx: Serve
         consolidationMode: effectiveConsolidationMode,
         protectedBranchBehavior: effectiveProtectedBranchBehavior,
         protectedBranchPatterns: effectiveProtectedBranchPatterns,
+        projectStorageBackend: effectiveProjectStorageBackend,
+        projectMemoryRef: effectiveProjectMemoryRef,
         maxAttachmentsPerProject: maxAttachmentsChanged
           ? maxAttachmentsPerProject
           : await ctx.configStore.getMaxAttachmentsPerProject(),
@@ -206,7 +258,7 @@ export function registerSetProjectMemoryPolicyTool(server: McpServer, ctx: Serve
             type: "text",
             text:
               `Project memory policy set for ${project.name}: defaultScope=${effectiveDefaultScope}` +
-              `${modeStr}${branchBehaviorStr}${branchPatternsStr}${maxAttachmentsStr}` +
+              `${modeStr}${branchBehaviorStr}${branchPatternsStr}${backendStr}${memoryRefStr}${maxAttachmentsStr}` +
               `${
                 commitStatus.status === "failed"
                   ? `\n${formatRetrySummary(retry) ?? `Commit failed. Push status: ${pushStatus.status}.`}`
@@ -282,6 +334,8 @@ export function registerGetProjectMemoryPolicyTool(server: McpServer, ctx: Serve
         consolidationMode: policy.consolidationMode,
         protectedBranchBehavior: policy.protectedBranchBehavior,
         protectedBranchPatterns: policy.protectedBranchPatterns,
+        projectStorageBackend: policy.projectStorageBackend,
+        projectMemoryRef: policy.projectMemoryRef,
         maxAttachmentsPerProject,
         updatedAt: policy.updatedAt,
       };
@@ -295,6 +349,10 @@ export function registerGetProjectMemoryPolicyTool(server: McpServer, ctx: Serve
         policy.protectedBranchPatterns && policy.protectedBranchPatterns.length > 0
           ? `protectedBranchPatterns=${policy.protectedBranchPatterns.join("|")}`
           : undefined,
+        policy.projectStorageBackend
+          ? `projectStorageBackend=${policy.projectStorageBackend}`
+          : undefined,
+        policy.projectMemoryRef ? `projectMemoryRef=${policy.projectMemoryRef}` : undefined,
         `maxAttachmentsPerProject=${maxAttachmentsPerProject}`,
       ]
         .filter(Boolean)

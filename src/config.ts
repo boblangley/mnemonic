@@ -6,6 +6,7 @@ import { attempt, attemptSync, debugLog, getErrorMessage } from "./error-utils.j
 import {
   CONSOLIDATION_MODES,
   PROJECT_POLICY_SCOPES,
+  PROJECT_STORAGE_BACKENDS,
   PROTECTED_BRANCH_BEHAVIORS,
   type ProjectMemoryPolicy,
 } from "./project-memory-policy.js";
@@ -112,6 +113,8 @@ function normalizeProjectMemoryPolicies(value: unknown): Record<string, ProjectM
       consolidationMode?: unknown;
       protectedBranchPatterns?: unknown;
       protectedBranchBehavior?: unknown;
+      projectStorageBackend?: unknown;
+      projectMemoryRef?: unknown;
       updatedAt?: unknown;
     };
 
@@ -145,6 +148,18 @@ function normalizeProjectMemoryPolicies(value: unknown): Record<string, ProjectM
           .filter((pattern) => pattern.length > 0)
       : undefined;
 
+    const projectStorageBackend = PROJECT_STORAGE_BACKENDS.includes(
+      policyRecord.projectStorageBackend as (typeof PROJECT_STORAGE_BACKENDS)[number],
+    )
+      ? (policyRecord.projectStorageBackend as (typeof PROJECT_STORAGE_BACKENDS)[number])
+      : undefined;
+
+    const projectMemoryRef =
+      typeof policyRecord.projectMemoryRef === "string" &&
+      policyRecord.projectMemoryRef.trim().length > 0
+        ? policyRecord.projectMemoryRef.trim()
+        : undefined;
+
     normalized[projectId] = {
       projectId: normalizedProjectId,
       projectName:
@@ -153,6 +168,8 @@ function normalizeProjectMemoryPolicies(value: unknown): Record<string, ProjectM
       consolidationMode,
       protectedBranchPatterns,
       protectedBranchBehavior,
+      projectStorageBackend,
+      projectMemoryRef,
       updatedAt: typeof policyRecord.updatedAt === "string" ? policyRecord.updatedAt : "",
     };
   }

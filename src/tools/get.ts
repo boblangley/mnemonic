@@ -12,6 +12,7 @@ import {
 } from "../structured-content.js";
 import {
   ensureBranchSynced,
+  ensurePolicyProjectVaultLoaded,
   resolveProject,
   noteProjectRef,
   projectParam,
@@ -57,6 +58,7 @@ export function registerGetTool(server: McpServer, ctx: ServerContext): void {
     async ({ ids, cwd, includeRelationships }) => {
       const t0Get = performance.now();
       await ensureBranchSynced(ctx, cwd);
+      await ensurePolicyProjectVaultLoaded(ctx, cwd);
 
       const project = await resolveProject(ctx, cwd);
       const found: GetResult["notes"] = [];
