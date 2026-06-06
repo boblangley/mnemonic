@@ -270,33 +270,7 @@ export class Storage implements NoteStorage {
   }
 
   private serializeNote(note: Note): string {
-    const frontmatter: Record<string, unknown> = {
-      title: note.title,
-      tags: note.tags,
-      lifecycle: note.lifecycle,
-      createdAt: note.createdAt,
-      updatedAt: note.updatedAt,
-    };
-    if (isNoteRole(note.role)) {
-      frontmatter["role"] = note.role;
-    }
-    if (isNoteImportance(note.importance)) {
-      frontmatter["importance"] = note.importance;
-    }
-    if (typeof note.alwaysLoad === "boolean") {
-      frontmatter["alwaysLoad"] = note.alwaysLoad;
-    }
-    if (note.project) {
-      frontmatter["project"] = note.project;
-      if (note.projectName) frontmatter["projectName"] = note.projectName;
-    }
-    if (note.relatedTo && note.relatedTo.length > 0) {
-      frontmatter["relatedTo"] = note.relatedTo;
-    }
-    if (note.memoryVersion !== undefined && note.memoryVersion > 0) {
-      frontmatter["memoryVersion"] = note.memoryVersion;
-    }
-    return matter.stringify(note.content, frontmatter);
+    return serializeNote(note);
   }
 
   // ── Embeddings ─────────────────────────────────────────────────────────────
@@ -420,29 +394,63 @@ export class Storage implements NoteStorage {
   }
 
   parseNote(id: MemoryId, raw: string): Note {
-    if (!raw.trimStart().startsWith("---")) {
-      throw new MalformedNoteError(id);
-    }
-
-    const parsed = matter(raw);
-    return {
-      id,
-      title: parsed.data["title"] ?? id,
-      content: parsed.content.trim(),
-      tags: parsed.data["tags"] ?? [],
-      lifecycle: normalizeLifecycle(parsed.data["lifecycle"]),
-      role: normalizeRole(parsed.data["role"]),
-      importance: normalizeImportance(parsed.data["importance"]),
-      alwaysLoad: normalizeAlwaysLoad(parsed.data["alwaysLoad"]),
-      project: typeof parsed.data["project"] === "string" ? parsed.data["project"] : undefined,
-      projectName:
-        typeof parsed.data["projectName"] === "string" ? parsed.data["projectName"] : undefined,
-      relatedTo: validateRelatedTo(parsed.data["relatedTo"]),
-      createdAt: toIsoString(parsed.data["createdAt"]),
-      updatedAt: toIsoString(parsed.data["updatedAt"]),
-      memoryVersion: normalizeMemoryVersion(parsed.data["memoryVersion"]),
-    };
+    return parseNote(id, raw);
   }
+}
+
+export function serializeNote(note: Note): string {
+  const frontmatter: Record<string, unknown> = {
+    title: note.title,
+    tags: note.tags,
+    lifecycle: note.lifecycle,
+    createdAt: note.createdAt,
+    updatedAt: note.updatedAt,
+  };
+  if (isNoteRole(note.role)) {
+    frontmatter["role"] = note.role;
+  }
+  if (isNoteImportance(note.importance)) {
+    frontmatter["importance"] = note.importance;
+  }
+  if (typeof note.alwaysLoad === "boolean") {
+    frontmatter["alwaysLoad"] = note.alwaysLoad;
+  }
+  if (note.project) {
+    frontmatter["project"] = note.project;
+    if (note.projectName) frontmatter["projectName"] = note.projectName;
+  }
+  if (note.relatedTo && note.relatedTo.length > 0) {
+    frontmatter["relatedTo"] = note.relatedTo;
+  }
+  if (note.memoryVersion !== undefined && note.memoryVersion > 0) {
+    frontmatter["memoryVersion"] = note.memoryVersion;
+  }
+  return matter.stringify(note.content, frontmatter);
+}
+
+export function parseNote(id: MemoryId, raw: string): Note {
+  if (!raw.trimStart().startsWith("---")) {
+    throw new MalformedNoteError(id);
+  }
+
+  const parsed = matter(raw);
+  return {
+    id,
+    title: parsed.data["title"] ?? id,
+    content: parsed.content.trim(),
+    tags: parsed.data["tags"] ?? [],
+    lifecycle: normalizeLifecycle(parsed.data["lifecycle"]),
+    role: normalizeRole(parsed.data["role"]),
+    importance: normalizeImportance(parsed.data["importance"]),
+    alwaysLoad: normalizeAlwaysLoad(parsed.data["alwaysLoad"]),
+    project: typeof parsed.data["project"] === "string" ? parsed.data["project"] : undefined,
+    projectName:
+      typeof parsed.data["projectName"] === "string" ? parsed.data["projectName"] : undefined,
+    relatedTo: validateRelatedTo(parsed.data["relatedTo"]),
+    createdAt: toIsoString(parsed.data["createdAt"]),
+    updatedAt: toIsoString(parsed.data["updatedAt"]),
+    memoryVersion: normalizeMemoryVersion(parsed.data["memoryVersion"]),
+  };
 }
 
 function normalizeMemoryVersion(value: unknown): number {
