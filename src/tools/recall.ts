@@ -78,6 +78,11 @@ import {
   computeRecallRetrievalCoverage,
   ATTACHMENT_BOOST,
 } from "./recall-helpers.js";
+import {
+  collectDocumentChunkCandidates,
+  getDocumentSourceAttachmentIds,
+} from "../document-recall.js";
+import { getCurrentGeneration } from "../generation-storage.js";
 
 export function registerRecallTool(server: McpServer, ctx: ServerContext): void {
   server.registerTool(
@@ -94,7 +99,8 @@ export function registerRecallTool(server: McpServer, ctx: ServerContext): void 
         "Do not use this when:\n" +
         "- You already know the exact id; use `get`\n" +
         "- You just want to browse by tags or scope; use `list`\n\n" +
-        "Returns: ranked matches (id, title, score, vault, tags, lifecycle, updatedAt), 1-hop relationship previews on top results, temporal history (mode: temporal), retrieval evidence (evidence: compact), including optional score decomposition, diagnostics: recallScopeNoteCount, diversity, retrievalCoverage, signalStrength.\n\n" +
+        "Returns: ranked matches (id, title, score, vault, tags, lifecycle, updatedAt), 1-hop relationship previews on top results, temporal history (mode: temporal), retrieval evidence (evidence: compact), including optional score decomposition, diagnostics: recallScopeNoteCount, diversity, retrievalCoverage, signalStrength.\n" +
+        "Document-source attachments return documentChunks (kind, chunkId, documentId, score, sourcePath, headingAncestry, excerpt, attachmentId, retrievalHandle).\n\n" +
         "Typical next step:\n" +
         "- Use `get`, `update`, `relate`, or `consolidate` based on the results.",
       annotations: {
@@ -178,7 +184,12 @@ export function registerRecallTool(server: McpServer, ctx: ServerContext): void 
       await ensureBranchSynced(ctx, cwd);
 
       const project = await resolveProject(ctx, cwd);
-      const queryVec = await embed(query);
+      // Fail-soft: if the query embedding cannot be generated (Ollama down, model
+      // not pulled, quota exceeded), skip semantic memory scoring but keep the
+      // lexical projection channel and document-source chunks (which are lexical
+      // only). Consistent with the embedMissingNotes fail-soft below.
+      const queryEmbed = await attempt("recall:embed-query", () => embed(query));
+      const queryVec: number[] | null = queryEmbed.ok ? queryEmbed.value : null;
       const vaults = await ctx.vaultManager.searchOrder(cwd, project?.id);
 
       let effectiveLimit = limit;
@@ -241,6 +252,7 @@ export function registerRecallTool(server: McpServer, ctx: ServerContext): void 
         : undefined;
 
       for (const vault of vaults) {
+        if (!queryVec) continue; // embedding unavailable -> lexical + document channels still run
         const embeddings = project
           ? ((await getOrBuildVaultEmbeddings(project.id, vault)) ??
             (await vault.storage.listEmbeddings()))
@@ -476,7 +488,50 @@ export function registerRecallTool(server: McpServer, ctx: ServerContext): void 
           ? selectWorkflowResults(promoted, effectiveLimit, scope)
           : selectRecallResults(promoted, effectiveLimit, scope);
 
-      if (top.length === 0) {
+      // Collect document chunks from document-source attachments BEFORE the
+      // empty-memory early return. External documents are the primary fallback
+      // when no managed memory matches, so they must be collected regardless of
+      // whether `top` has memory candidates. Excluded from temporal/workflow
+      // mode and tag/lifecycle filters (plan Stage 6).
+      const documentChunks: NonNullable<RecallResult["documentChunks"]> = [];
+      const hasTagFilter = tags && tags.length > 0;
+      const hasLifecycleFilter = lifecycle !== undefined;
+      const isDefaultMode = mode === undefined || mode === "default";
+      if (
+        project &&
+        (scope === "all" || scope === "project") &&
+        isDefaultMode &&
+        !hasTagFilter &&
+        !hasLifecycleFilter
+      ) {
+        const attachmentConfigs = await ctx.configStore.getProjectAttachments(project.id);
+        const docSourceAttachmentIds = getDocumentSourceAttachmentIds(attachmentConfigs);
+        if (docSourceAttachmentIds.length > 0) {
+          const candidates = collectDocumentChunkCandidates(docSourceAttachmentIds, query, limit);
+          for (const candidate of candidates) {
+            const generation = getCurrentGeneration(candidate.attachmentId);
+            const doc = generation?.documents.get(candidate.documentId);
+            documentChunks.push({
+              kind: "document-chunk",
+              chunkId: candidate.chunkId,
+              documentId: candidate.documentId,
+              score: candidate.score,
+              boosted: candidate.score,
+              sourcePath: doc?.sourcePath ?? candidate.sourcePath,
+              headingAncestry: candidate.headingAncestry,
+              excerpt: candidate.excerpt,
+              attachmentId: candidate.attachmentId,
+              sourceMediaType: doc?.sourceMediaType ?? "text/markdown",
+              extractionMetadata: doc?.extractionMetadata,
+              indexedCommit: candidate.indexedCommit,
+              generationId: candidate.generationId,
+              retrievalHandle: `chunk:${candidate.chunkId}`,
+            });
+          }
+        }
+      }
+
+      if (top.length === 0 && documentChunks.length === 0) {
         const structuredContent: RecallResult = {
           action: "recalled",
           query,
@@ -752,7 +807,22 @@ export function registerRecallTool(server: McpServer, ctx: ServerContext): void 
       }
       const diagnosticsLine =
         diagnosticsParts.length > 0 ? `\n${diagnosticsParts.join(" | ")}` : "";
-      const textContent = `${header}${diagnosticsLine}\n\n${sections.join("\n\n---\n\n")}`;
+      let textContent = `${header}${diagnosticsLine}\n\n${sections.join("\n\n---\n\n")}`;
+
+      // Add document chunk text rendering
+      if (documentChunks.length > 0) {
+        textContent += "\n\n## Document Results\n\n";
+        for (const dc of documentChunks) {
+          const headingStr =
+            dc.headingAncestry.length > 0
+              ? dc.headingAncestry.map((h) => `${"#".repeat(h.depth)} ${h.text}`).join(" > ")
+              : "(introduction)";
+          textContent += `- **${dc.sourcePath}** (${(dc.score * 100).toFixed(0)}%)\n`;
+          textContent += `  heading: ${headingStr}\n`;
+          textContent += `  ${dc.excerpt.slice(0, 150)}...\n`;
+          textContent += `  \`${dc.retrievalHandle}\`\n\n`;
+        }
+      }
 
       const structuredContent: RecallResult = {
         action: "recalled",
@@ -762,6 +832,7 @@ export function registerRecallTool(server: McpServer, ctx: ServerContext): void 
         diversity,
         retrievalCoverage,
         results: structuredResults,
+        documentChunks: documentChunks.length > 0 ? documentChunks : undefined,
       };
 
       console.error(`[recall:timing] ${(performance.now() - t0Recall).toFixed(1)}ms`);
