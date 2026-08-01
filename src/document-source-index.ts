@@ -9,13 +9,7 @@ import type {
 } from "./retrieval-document.js";
 import { DOCUMENT_SOURCE_LIMITS } from "./retrieval-document.js";
 import { deriveDocumentId } from "./retrieval-document.js";
-import { registerExtractor } from "./document-extractor.js";
-import { markdownExtractor } from "./markdown-extractor.js";
-
 import { publishGeneration } from "./generation-storage.js";
-
-// Register built-in extractors
-registerExtractor(markdownExtractor);
 
 // Simple build result for document-sync.ts compatibility
 export interface SimpleBuildResult {
@@ -23,7 +17,6 @@ export interface SimpleBuildResult {
   documentCount: number;
   chunkCount: number;
   skippedFiles: Array<{ path: string; reason: string }>;
-  errors: string[];
 }
 
 /**
@@ -37,7 +30,6 @@ export function buildGenerationFromFiles(
   chunker: DocumentChunker,
   indexedCommit: string,
 ): SimpleBuildResult {
-  const errors: string[] = [];
   const skipped: Array<{ path: string; reason: string }> = [];
   const documents = new Map<string, RetrievalDocument>();
   const chunks: RetrievalChunk[] = [];
@@ -138,7 +130,6 @@ export function buildGenerationFromFiles(
     documentCount: documents.size,
     chunkCount: chunkMap.size,
     skippedFiles: skipped,
-    errors,
   };
 }
 

@@ -1,14 +1,22 @@
 import type { DocumentId, ChunkId } from "./retrieval-document.js";
+import { normalizePathToSlug } from "./retrieval-document.js";
 
 // Namespace delimiters for entity references
 const DOC_PREFIX = "doc:";
 const CHUNK_PREFIX = "chunk:";
 
-// Parsed entity reference
+// Parsed document entity reference (doc: prefix)
 export interface DocumentEntityRef {
-  kind: "document" | "chunk";
+  kind: "document";
   documentId: DocumentId;
-  chunkId?: ChunkId;
+  raw: string;
+}
+
+// Parsed chunk entity reference (chunk: prefix)
+export interface ChunkEntityRef {
+  kind: "chunk";
+  documentId: DocumentId;
+  chunkId: ChunkId;
   raw: string;
 }
 
@@ -25,7 +33,7 @@ export interface UnknownEntityRef {
   raw: string;
 }
 
-export type EntityRef = DocumentEntityRef | MemoryEntityRef | UnknownEntityRef;
+export type EntityRef = DocumentEntityRef | ChunkEntityRef | MemoryEntityRef | UnknownEntityRef;
 
 /**
  * Check if an ID string looks like a document entity reference.
@@ -97,7 +105,7 @@ export function classifyEntityRef(id: string): "document" | "chunk" | "memory" |
  * Build a document entity reference string from an attachment ID and path.
  */
 export function buildDocumentRef(attachmentId: string, rootRelativePath: string): string {
-  const normalized = rootRelativePath.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+  const normalized = normalizePathToSlug(rootRelativePath);
   return `${DOC_PREFIX}${attachmentId}::${normalized}`;
 }
 
