@@ -8,7 +8,7 @@ tags:
   - retrieval
 lifecycle: permanent
 createdAt: '2026-03-08T14:12:45.006Z'
-updatedAt: '2026-08-03T10:44:58.391Z'
+updatedAt: '2026-08-15T11:47:56.356Z'
 project: https-github-com-danielmarbach-mnemonic
 projectName: mnemonic
 relatedTo:
@@ -20,8 +20,10 @@ memoryVersion: 1
 ---
 Authoritative note for mnemonic embedding behavior, model-default rationale, compatibility, and benchmarked alternatives.
 
-## Consolidated from:
+## Consolidated from
+
 ### mnemonic embedding consistency verification
+
 *Source: `mnemonic-embedding-consistency-verification-5129afcc`*
 
 Comprehensive verification of embedding handling across all mutating MCP commands.
@@ -65,6 +67,7 @@ File: `tests/embeddings.test.ts` plus MCP integration coverage.
 The model default can change without permanently stranding older embedding files; a normal `reindex` pass refreshes them.
 
 ### Qwen embedding alternative benchmark against v2 moe
+
 *Source: `qwen-embedding-alternative-benchmark-against-v2-moe-972393f7`*
 
 Benchmarked `qwen3-embedding:0.6b` against `nomic-embed-text-v2-moe` through Ollama's `/api/embed` endpoint on the current mnemonic note corpus.
@@ -73,3 +76,13 @@ Benchmarked `qwen3-embedding:0.6b` against `nomic-embed-text-v2-moe` through Oll
 - Qwen's larger context window makes it attractive for longer notes, but on the current mnemonic workload it was not clearly better overall.
 - Measured results: `nomic-embed-text-v2-moe` achieved `top1=11/14`, `top3=13/14`, `MRR=0.875`, `avg_query_seconds=0.019`, `avg_note_seconds=0.0431`; `qwen3-embedding:0.6b` achieved `top1=11/14`, `top3=14/14`, `MRR=0.869`, `avg_query_seconds=0.0184`, `avg_note_seconds=0.1017`.
 - Decision: keep `nomic-embed-text-v2-moe` as the default for now, but document Qwen as a viable long-context alternative because the runtime is already compatible.
+
+## qwen3-embedding endpoint support and configurable chunk ceiling (2026-08)
+
+*Source: RPIR request `rpir-request-qwen3-embedding-endpoints-and-chunk-size-restri-6f294f65`*
+
+- Endpoint claim (raised during a model switch): mostly false. All qwen3-embedding sizes (0.6B/4B/8B) work through the existing endpoints — local Ollama `/api/embed` only needs `EMBED_MODEL` changed; remote serving (vLLM, LM Studio, remote Ollama, cloud gateways) uses `EMBED_PROVIDER=openai-compatible` with `EMBED_BASE_URL`. `OLLAMA_URL` stays localhost/private-only by design (SSRF guard); `EMBED_DIMENSIONS` applies to OpenAI/Gemini providers only (Ollama has no dimensions parameter).
+- Fixed-chunk-size claim: was true. Document-source chunks were hardcoded to 4000 chars. Fixed in commit 7179557: `EMBED_MAX_CHUNK_CHARS` (integer 200-100000, default 4000) validated at startup; the resolved value is encoded into `chunkerVersion` (`"3"` at default, `"3:<chars>"` with a custom ceiling; any change from a manifest's recorded version triggers a one-time re-chunk on next sync via `isGenerationCurrent` and the lazy-load manifest check). Since the user-endorsed v3 bump, oversized introductions before the first heading are split against the ceiling too (commit 6ad14e7, adversarially reviewed: 614-doc differential, 0 unexpected changes).
+- Note embeddings always use bounded 1200-char projections (`src/projections.ts`), so larger model context windows mainly benefit document-source attachments, not note recall.
+- Resolved (was deferred gap): intro-before-first-heading chunks now split against the ceiling as of chunker v3 (commit 6ad14e7); a single paragraph longer than the ceiling still yields one over-ceiling chunk by design (paragraph-granularity splitting).
+- Fresh adversarial review passed all constraints, including a differential fuzz run (419 docs, 2161 chunks byte-identical at default env).
