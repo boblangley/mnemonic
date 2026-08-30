@@ -6,6 +6,17 @@ The format is loosely based on Keep a Changelog and uses semver-style version he
 
 ## [Unreleased]
 
+## [0.44.0] - 2026-08-30
+
+### Added
+
+- Derived default scope for `recall`: when `scope` is omitted and `cwd` detects a project, weakly-matching unassociated global notes are gated out of the semantic channel unless they are curated (`alwaysLoad`), strongly matching, or arrive via the lexical (exact wording) or graph channels. Suppression counts and widening are reported in text and as structured output (`suppressedGlobalCount`, `widenedScope`), and recall widens to the full pool when nothing was admitted. Gating never applies to explicit scopes or when `cwd` is absent.
+
+### Changed
+
+- Read tools that accept `cwd` (`recall`, `list`, `recent_memories`, `memory_graph`) now append a hint when `cwd` is omitted so callers know only global memories were searched; `get`, `update`, `forget`, and `where_is_memory` mention it when an id cannot be found without `cwd`.
+- `recall` with explicit `scope: "global"` is now location-based across all retrieval channels: the lexical and graph channels include project-tagged notes stored in the main vault, matching the semantic channel and the "repo you don't own" contract.
+
 ## [0.43.0] - 2026-08-29
 
 ### Added
