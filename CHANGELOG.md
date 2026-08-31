@@ -15,6 +15,10 @@ The format is loosely based on Keep a Changelog and uses semver-style version he
 - Consolidation evidence and high-priority anchor selection now read `supersedes` edges under the same passive convention as the rest of the codebase: `supersededBy` is derived from the carrier's own edge, and superseded notes are excluded from anchors.
 - Drop duplicated protected-branch pre-check in executeMerge - A contribution from @claudedowling
 
+### Changed
+
+- `recall` is significantly faster on large result sets: query-token document frequencies for coverage scoring are now computed once per rerank instead of re-tokenising the entire candidate corpus for every candidate, reducing the dominant reranking cost from quadratic to linear (19.5s of a 22.5s recall on a 1026-note vault down to 0.15s) - A contribution from @claudedowling
+
 ## [0.44.0] - 2026-08-30
 
 ### Added

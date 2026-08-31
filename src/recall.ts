@@ -460,26 +460,50 @@ function computeSignificantPhraseScore(query: string, candidateText: string): nu
   return normalizedCandidate.includes(phraseTokens.join(" ")) ? 1 : 0;
 }
 
-function computeWeightedQueryCoverage(
+/**
+ * Document frequency of each query token across the corpus.
+ *
+ * This depends only on the query and the corpus, both of which are fixed for a
+ * whole rerank, so it is computed once up front. Computing it inside
+ * {@link computeWeightedQueryCoverage} re-tokenised the entire corpus for every
+ * candidate, making reranking O(N^2) in corpus size — the dominant cost of
+ * recall on a large vault.
+ */
+function buildQueryTokenDocumentFrequencies(
   query: string,
-  candidateText: string,
   corpusTexts: string[],
-): number {
+): Map<string, number> {
   const queryTokens = Array.from(new Set(tokenize(query))).filter((token) => token.length >= 4);
+  const frequencies = new Map<string, number>(queryTokens.map((token) => [token, 0]));
   if (queryTokens.length === 0) {
+    return frequencies;
+  }
+
+  for (const text of corpusTexts) {
+    const tokens = new Set(tokenize(text));
+    for (const token of queryTokens) {
+      if (tokens.has(token)) {
+        frequencies.set(token, (frequencies.get(token) ?? 0) + 1);
+      }
+    }
+  }
+
+  return frequencies;
+}
+
+function computeWeightedQueryCoverage(
+  candidateText: string,
+  documentFrequencies: Map<string, number>,
+): number {
+  if (documentFrequencies.size === 0) {
     return 0;
   }
 
   const candidateTokens = new Set(tokenize(candidateText));
-  const corpusTokenSets = corpusTexts.map((text) => new Set(tokenize(text)));
   let matchedWeight = 0;
   let totalWeight = 0;
 
-  for (const token of queryTokens) {
-    const documentFrequency = corpusTokenSets.reduce(
-      (count, tokens) => count + (tokens.has(token) ? 1 : 0),
-      0,
-    );
+  for (const [token, documentFrequency] of documentFrequencies) {
     const weight = 1 / Math.max(documentFrequency, 1);
     totalWeight += weight;
     if (candidateTokens.has(token)) {
@@ -509,11 +533,13 @@ export function applyLexicalReranking(
     .map((candidate) => getProjectionText(candidate.id, candidate))
     .filter((text): text is string => Boolean(text));
 
+  const documentFrequencies = buildQueryTokenDocumentFrequencies(query, corpusTexts);
+
   for (const candidate of candidates) {
     const projText = getProjectionText(candidate.id, candidate);
     if (projText) {
       candidate.lexicalScore = computeLexicalScore(query, projText);
-      candidate.coverageScore = computeWeightedQueryCoverage(query, projText, corpusTexts);
+      candidate.coverageScore = computeWeightedQueryCoverage(projText, documentFrequencies);
       candidate.phraseScore = computeSignificantPhraseScore(query, projText);
     }
   }
@@ -551,11 +577,13 @@ export function enrichRescueCandidateScores(
     .map((candidate) => getProjectionText(candidate.id, candidate))
     .filter((text): text is string => Boolean(text));
 
+  const documentFrequencies = buildQueryTokenDocumentFrequencies(query, corpusTexts);
+
   for (const candidate of allCandidates) {
     if (!rescueIds.has(candidate.id)) continue;
     const projText = getProjectionText(candidate.id, candidate);
     if (projText) {
-      candidate.coverageScore = computeWeightedQueryCoverage(query, projText, corpusTexts);
+      candidate.coverageScore = computeWeightedQueryCoverage(projText, documentFrequencies);
       candidate.phraseScore = computeSignificantPhraseScore(query, projText);
     }
   }
