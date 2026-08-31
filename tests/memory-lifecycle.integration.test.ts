@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mkdtemp, stat, readFile } from "fs/promises";
+import { mkdtemp, readdir, stat, readFile } from "fs/promises";
 import os from "os";
 import path from "path";
 
@@ -1680,6 +1680,120 @@ describe("memory-lifecycle", () => {
         embeddingServer.url,
       );
       expect(protectedPruneOverride).toContain("Pruned");
+    } finally {
+      await embeddingServer.close();
+    }
+  }, 120000);
+
+  it("blocks execute-merge before mutating notes when the project vault is on a protected branch", async () => {
+    const vaultDir = await mkdtemp(path.join(os.tmpdir(), "mnemonic-mcp-vault-"));
+    const repoDir = await mkdtemp(path.join(os.tmpdir(), "mnemonic-mcp-project-"));
+    tempDirs.push(vaultDir, repoDir);
+
+    await initTestRepo(repoDir);
+    await execFileAsync("git", ["checkout", "-B", "main"], { cwd: repoDir });
+
+    const embeddingServer = await startFakeEmbeddingServer();
+    const notesDir = path.join(repoDir, ".mnemonic", "notes");
+
+    try {
+      const setBlock = await callLocalMcpResponse(
+        vaultDir,
+        "set_project_memory_policy",
+        {
+          cwd: repoDir,
+          protectedBranchBehavior: "block",
+          protectedBranchPatterns: ["main"],
+        },
+        embeddingServer.url,
+      );
+      expect(setBlock.text).toContain("protectedBranchBehavior=block");
+
+      const sourceA = await callLocalMcpResponse(
+        vaultDir,
+        "remember",
+        {
+          title: "Execute merge precheck source A",
+          content: "First source note for the execute-merge protected-branch pre-check test.",
+          tags: ["integration", "protected-branch", "consolidate"],
+          summary: "Create first execute-merge pre-check source note",
+          cwd: repoDir,
+          scope: "project",
+          allowProtectedBranch: true,
+        },
+        embeddingServer.url,
+      );
+      const sourceAId = extractRememberedId(sourceA.text);
+
+      const sourceB = await callLocalMcpResponse(
+        vaultDir,
+        "remember",
+        {
+          title: "Execute merge precheck source B",
+          content: "Second source note for the execute-merge protected-branch pre-check test.",
+          tags: ["integration", "protected-branch", "consolidate"],
+          summary: "Create second execute-merge pre-check source note",
+          cwd: repoDir,
+          scope: "project",
+          allowProtectedBranch: true,
+        },
+        embeddingServer.url,
+      );
+      const sourceBId = extractRememberedId(sourceB.text);
+
+      const sourceAPath = path.join(notesDir, `${sourceAId}.md`);
+      const sourceBPath = path.join(notesDir, `${sourceBId}.md`);
+      const sourceABefore = await readFile(sourceAPath, "utf-8");
+      const sourceBBefore = await readFile(sourceBPath, "utf-8");
+      const notesBefore = (await readdir(notesDir)).sort();
+
+      const blockedMerge = await callLocalMcpResponse(
+        vaultDir,
+        "consolidate",
+        {
+          cwd: repoDir,
+          strategy: "execute-merge",
+          mergePlan: {
+            sourceIds: [sourceAId, sourceBId],
+            targetTitle: "Execute merge precheck target",
+            summary: "Should never be written on a protected branch",
+          },
+        },
+        embeddingServer.url,
+      );
+
+      expect(blockedMerge.text).toContain("Auto-commit blocked");
+      expect(blockedMerge.text).toContain("`consolidate`");
+
+      const blockedParsed = ConsolidateResultSchema.parse(blockedMerge.structuredContent);
+      expect(blockedParsed.strategy).toBe("execute-merge");
+      expect(blockedParsed.notesModified).toBe(0);
+      expect(blockedParsed.warnings?.[0]).toContain("Auto-commit blocked");
+
+      // The pre-check must run before any write: source notes and the notes
+      // directory must be byte-for-byte unchanged, and no target note created.
+      await expect(readFile(sourceAPath, "utf-8")).resolves.toBe(sourceABefore);
+      await expect(readFile(sourceBPath, "utf-8")).resolves.toBe(sourceBBefore);
+      expect((await readdir(notesDir)).sort()).toEqual(notesBefore);
+
+      // Sanity check: the same merge succeeds with a one-time override, proving
+      // the block above came from the protected-branch guard and not a bad plan.
+      const overrideMerge = await callLocalMcpResponse(
+        vaultDir,
+        "consolidate",
+        {
+          cwd: repoDir,
+          strategy: "execute-merge",
+          mergePlan: {
+            sourceIds: [sourceAId, sourceBId],
+            targetTitle: "Execute merge precheck target",
+            summary: "Allowed by one-time protected branch override",
+          },
+          allowProtectedBranch: true,
+        },
+        embeddingServer.url,
+      );
+      expect(overrideMerge.text).toContain("Consolidated 2 notes");
     } finally {
       await embeddingServer.close();
     }

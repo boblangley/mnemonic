@@ -13,6 +13,7 @@ The format is loosely based on Keep a Changelog and uses semver-style version he
 - `unrelate` removes the relationship from whichever note carries it. Passive `supersedes` edges live on the superseded note, so `unrelate(..., bidirectional: false)` previously missed them and left a stale edge behind.
 - `prune-superseded` validates the supersession lineage before deleting anything: mutual pairs, self-loops, longer cycles, ambiguous multiple-target carriers, and carriers whose superseder is out of scope are skipped with a warning instead of deleted, preventing silent knowledge loss on legacy data. Relationship cleanup now only strips references to notes that were actually pruned, and protected-branch pre-checks cover every vault that will be mutated (including relationship-cleanup targets).
 - Consolidation evidence and high-priority anchor selection now read `supersedes` edges under the same passive convention as the rest of the codebase: `supersededBy` is derived from the carrier's own edge, and superseded notes are excluded from anchors.
+- Drop duplicated protected-branch pre-check in executeMerge - A contribution from @claudedowling
 
 ## [0.44.0] - 2026-08-30
 

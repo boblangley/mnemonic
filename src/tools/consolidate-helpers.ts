@@ -548,34 +548,6 @@ export async function executeMerge(
     }
   }
 
-  // Pre-check protected branches
-  for (const vault of new Set([targetVault, ...sourceEntries.map((se) => se.vault)])) {
-    const check = await checkVaultProtectedBranch({
-      ctx,
-      vault,
-      allowProtectedBranch,
-      toolName: "consolidate",
-      noteProjectId: project?.id,
-    });
-    if (check.blocked) {
-      const structuredContent: ConsolidateResult = {
-        action: "consolidated",
-        strategy: "execute-merge",
-        project: toProjectRef(project),
-        notesProcessed: entries.length,
-        notesModified: 0,
-        warnings: [check.message],
-      };
-      if (declinedBranchConsent || requestCtx === undefined || !isMrtrSupported(requestCtx)) {
-        return {
-          content: [{ type: "text", text: check.message }],
-          structuredContent,
-        };
-      }
-      return protectedBranchDecision(requestCtx, check);
-    }
-  }
-
   await targetVault.storage.writeNote(consolidatedNote);
 
   // Embed consolidated note
